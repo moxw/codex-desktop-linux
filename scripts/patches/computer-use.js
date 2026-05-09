@@ -204,16 +204,29 @@ function applyLinuxComputerUseRendererAvailabilityPatch(currentSource) {
     return patchedSource.replace(availabilityNeedle, availabilityPatch);
   }
 
-  const currentAvailabilityNeedle =
-    "let _=a&&i&&l&&(o||m),v=_&&!o&&p.enabled&&!p.isLoading,y=_&&p.isLoading,b=_&&(o||p.isLoading),x;";
-  const currentAvailabilityPatch =
-    "let _=a&&i&&(c===`linux`||l&&(o||m)),v=_&&!o&&(c===`linux`||p.enabled)&&!p.isLoading,y=_&&c!==`linux`&&p.isLoading,b=_&&(o||c!==`linux`&&p.isLoading),x;";
-  if (patchedSource.includes(currentAvailabilityPatch)) {
-    return patchedSource;
+  const currentAvailabilityReplacements = [
+    {
+      needle: "let _=a&&i&&l&&(o||m),v=_&&!o&&p.enabled&&!p.isLoading,y=_&&p.isLoading,b=_&&(o||p.isLoading),x;",
+      patch: "let _=a&&i&&(c===`linux`||l&&(o||m)),v=_&&!o&&(c===`linux`||p.enabled)&&!p.isLoading,y=_&&c!==`linux`&&p.isLoading,b=_&&(o||c!==`linux`&&p.isLoading),x;",
+    },
+    {
+      needle: "let f=a&&i&&c&&(o||d),p=f&&!o&&u.enabled&&!u.isLoading,m=f&&u.isLoading,h=f&&(o||u.isLoading),g;",
+      patch: "let f=a&&i&&(s===`linux`||c&&(o||d)),p=f&&!o&&(s===`linux`||u.enabled)&&!u.isLoading,m=f&&s!==`linux`&&u.isLoading,h=f&&(o||s!==`linux`&&u.isLoading),g;",
+    },
+  ];
+  let matchedCurrentAvailability = false;
+  for (const replacement of currentAvailabilityReplacements) {
+    if (patchedSource.includes(replacement.patch)) {
+      matchedCurrentAvailability = true;
+      continue;
+    }
+    if (patchedSource.includes(replacement.needle)) {
+      patchedSource = patchedSource.replace(replacement.needle, replacement.patch);
+      matchedCurrentAvailability = true;
+    }
   }
-
-  if (patchedSource.includes(currentAvailabilityNeedle)) {
-    return patchedSource.replace(currentAvailabilityNeedle, currentAvailabilityPatch);
+  if (matchedCurrentAvailability) {
+    return patchedSource;
   }
 
   if (currentSource.includes("featureName:`computer_use`") && currentSource.includes("isComputerUseAvailable")) {
@@ -253,7 +266,10 @@ function applyLinuxComputerUseInstallFlowPatch(currentSource) {
     );
   }
 
-  if (currentSource.includes("featureName:`computer_use`")) {
+  if (
+    currentSource.includes("featureName:`computer_use`") &&
+    /![A-Za-z_$][\w$]*\.isLoading&&[A-Za-z_$][\w$]*\.enabled/.test(currentSource)
+  ) {
     console.warn(
       "WARN: Could not find Computer Use install flow gate — skipping Linux Computer Use install flow patch",
     );

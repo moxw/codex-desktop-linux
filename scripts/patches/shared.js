@@ -73,6 +73,9 @@ function patchAssetFiles(extractedDir, filenamePattern, patchFn, missingWarnMess
     .sort();
 
   if (candidates.length === 0) {
+    if (missingWarnMessage == null) {
+      return { matched: 0, changed: 0 };
+    }
     console.warn(missingWarnMessage);
     return { matched: 0, changed: 0 };
   }
