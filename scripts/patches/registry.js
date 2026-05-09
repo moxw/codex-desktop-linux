@@ -168,6 +168,7 @@ const WEBVIEW_ASSET_PATCHES = [
     apply: applyLinuxOpaqueWindowsDefaultPatch,
     missingDescription: "code theme bundle",
     skipDescription: "translucent sidebar default patch",
+    warnIfMissing: false,
   },
   {
     name: "opaque-window-default-general-settings",
@@ -199,7 +200,7 @@ const COMPUTER_USE_UI_ASSET_PATCHES = [
   {
     name: "linux-computer-use-ui-availability",
     ciPolicy: OPT_IN,
-    pattern: /^(use-model-settings|use-in-app-browser-use-availability)-.*\.js$/,
+    pattern: /^(apps|use-model-settings|use-in-app-browser-use-availability)-.*\.js$/,
     apply: applyLinuxComputerUseRendererAvailabilityPatch,
     missingDescription: "Computer Use availability bundle",
     skipDescription: "Linux Computer Use UI availability patch",
@@ -207,10 +208,11 @@ const COMPUTER_USE_UI_ASSET_PATCHES = [
   {
     name: "linux-computer-use-install-flow",
     ciPolicy: OPT_IN,
-    pattern: /^(use-plugin-install-flow|plugins-availability)-.*\.js$/,
+    pattern: /^(computer-use-settings|plugins-availability|use-plugin-install-flow)-.*\.js$/,
     apply: applyLinuxComputerUseInstallFlowPatch,
     missingDescription: "plugin install flow bundle",
     skipDescription: "Linux Computer Use install flow patch",
+    warnIfMissing: false,
   },
 ];
 
@@ -223,6 +225,9 @@ const CUSTOM_PATCH_POLICIES = [
 ];
 
 function webviewMissingWarning(extractedDir, patch) {
+  if (patch.warnIfMissing === false) {
+    return null;
+  }
   return `WARN: Could not find ${patch.missingDescription} in ${path.join(extractedDir, "webview", "assets")} — skipping ${patch.skipDescription}`;
 }
 

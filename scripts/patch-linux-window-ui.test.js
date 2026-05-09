@@ -111,6 +111,14 @@ function computerUseRendererAvailabilityBundleFixture() {
   ].join("");
 }
 
+function currentComputerUseRendererAvailabilityBundleFixture() {
+  return [
+    "function Hn(e){let t=(0,Pn.c)(10),{hostId:n,featureName:r,defaultEnabled:i}=e,a=i===void 0?!0:i,{data:o,isLoading:s}=nt(Tt,n),c;t[0]===o?c=t[1]:(c=o===void 0?[]:o,t[0]=o,t[1]=c);let l=c,u;if(t[2]!==r||t[3]!==l){let e;t[5]===r?e=t[6]:(e=e=>e.name===r,t[5]=r,t[6]=e),u=l.find(e),t[2]=r,t[3]=l,t[4]=u}else u=t[4];let d=u?.enabled??a,f;return t[7]!==s||t[8]!==d?(f={enabled:d,isLoading:s},t[7]=s,t[8]=d,t[9]=f):f=t[9],f}",
+    "function Un(e){return e===`macOS`||e===`windows`}",
+    "function Wn(e){let t=(0,Pn.c)(8),{enabled:n,hostId:r,isHostLocal:i}=e,a=n===void 0?!0:n,{isLoading:o,platform:s}=Et(),c=gt(`1506311413`),l;t[0]===r?l=t[1]:(l={featureName:`computer_use`,hostId:r},t[0]=r,t[1]=l);let u=Hn(l),d;t[2]===s?d=t[3]:(d=Un(s),t[2]=s,t[3]=d);let f=a&&i&&c&&(o||d),p=f&&!o&&u.enabled&&!u.isLoading,m=f&&u.isLoading,h=f&&(o||u.isLoading),g;return t[4]!==p||t[5]!==m||t[6]!==h?(g={available:p,isFetching:m,isLoading:h},t[4]=p,t[5]=m,t[6]=h,t[7]=g):g=t[7],g}",
+  ].join("");
+}
+
 function computerUseInstallFlowBundleFixture() {
   return "function Qe({forceReloadPlugins:e,hostId:t}){let ne=f({featureName:`computer_use`,hostId:t}),re=!ne.isLoading&&ne.enabled,[L,R]=(0,Z.useState)({});return re}";
 }
@@ -843,6 +851,19 @@ test("shows current Computer Use plugin UI on Linux without the upstream rollout
   );
 });
 
+test("shows Computer Use plugin UI with current apps bundle gates", () => {
+  const patched = applyPatchTwice(
+    applyLinuxComputerUseRendererAvailabilityPatch,
+    currentComputerUseRendererAvailabilityBundleFixture(),
+  );
+
+  assert.match(patched, /function Un\(e\)\{return e===`macOS`\|\|e===`windows`\|\|e===`linux`\}/);
+  assert.match(
+    patched,
+    /let f=a&&i&&\(s===`linux`\|\|c&&\(o\|\|d\)\),p=f&&!o&&\(s===`linux`\|\|u\.enabled\)&&!u\.isLoading,m=f&&s!==`linux`&&u\.isLoading,h=f&&\(o\|\|s!==`linux`&&u\.isLoading\),g;/,
+  );
+});
+
 test("allows Computer Use install flow on Linux", () => {
   const patched = applyPatchTwice(
     applyLinuxComputerUseInstallFlowPatch,
@@ -865,6 +886,17 @@ test("allows current Computer Use install flow on Linux", () => {
     patched,
     "te=ne({featureName:`computer_use`,hostId:t}),z=B({hostId:t,isHostLocal:m}),ie=re({hostId:t,isHostLocal:m}),U=!te.isLoading&&te.enabled||navigator.userAgent.includes(`Linux`),G=z.available,oe=ie.available,",
   );
+});
+
+test("keeps current Computer Use settings bundles quiet when install flow gate moved", () => {
+  const { value: patched, warnings } = captureWarns(() =>
+    applyLinuxComputerUseInstallFlowPatch(
+      "let l={featureName:`computer_use`,hostId:r};function ve(){return settingsComputerUseInstallButton}",
+    ),
+  );
+
+  assert.equal(patched, "let l={featureName:`computer_use`,hostId:r};function ve(){return settingsComputerUseInstallButton}");
+  assert.deepEqual(warnings, []);
 });
 
 test("auto-approves the app-provided Browser Use node_repl bridge", () => {
