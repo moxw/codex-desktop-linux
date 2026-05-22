@@ -581,6 +581,7 @@ stage_chrome_plugin_from_upstream() {
     remove_macos_sidecar_files "$target_plugin"
     patch_chrome_plugin_for_linux "$target_plugin"
     patch_browser_use_node_repl_env_guard "$target_plugin/scripts/browser-client.mjs"
+    patch_browser_use_native_pipe_linux_fallback "$target_plugin/scripts/browser-client.mjs"
     patch_browser_use_site_status_allowlist_fallback "$target_plugin/scripts/browser-client.mjs"
     if ! install_chrome_extension_host_resource "$target_plugin"; then
         rm -rf "$target_plugin"
@@ -668,6 +669,51 @@ path.write_text(source.replace(old, new, 1), encoding="utf-8")
 PY
 }
 
+patch_browser_use_native_pipe_linux_fallback() {
+    local client="$1"
+
+    if grep -Fq "codexLinuxNativePipeFallback" "$client"; then
+        return 0
+    fi
+
+    python3 - "$client" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+source = path.read_text(encoding="utf-8")
+pattern = re.compile(
+    r'static async create\((?P<socket>[A-Za-z_$][\w$]*)\)\{'
+    r'let (?P<bridge>[A-Za-z_$][\w$]*)=th\(\);'
+    r'if\((?P=bridge)!=null\)\{'
+    r'let (?P<connection>[A-Za-z_$][\w$]*)=await (?P=bridge)\.createConnection\((?P=socket)\);'
+    r'return new e\((?P=connection)\)\}'
+    r'throw new Error\(eh\(\)\)\}'
+)
+match = pattern.search(source)
+if match is None:
+    print(
+        "WARN: Could not find Browser Use nativePipe bridge insertion point — leaving browser-client.mjs unchanged",
+        file=sys.stderr,
+    )
+    raise SystemExit(0)
+
+socket = match.group("socket")
+bridge = match.group("bridge")
+connection = match.group("connection")
+replacement = (
+    f'static async create({socket}){{let {bridge}=th();'
+    f'if({bridge}!=null){{let {connection}=await {bridge}.createConnection({socket});'
+    f'return new e({connection})}}'
+    f'if(yT()==="linux"){{let{{createConnection:{connection}}}=await import("node:net");'
+    f'return console.warn("codexLinuxNativePipeFallback",{socket}),new e({connection}({socket}))}}'
+    f'throw new Error(eh())}}'
+)
+path.write_text(source[:match.start()] + replacement + source[match.end():], encoding="utf-8")
+PY
+}
+
 find_browser_plugin_source() {
     local bundled_root="$1"
     local source_marketplace="$2"
@@ -748,6 +794,7 @@ stage_browser_plugin_from_upstream() {
     cp -R "$source_plugin" "$target_plugin"
     remove_macos_sidecar_files "$target_plugin"
     patch_browser_use_node_repl_env_guard "$target_client"
+    patch_browser_use_native_pipe_linux_fallback "$target_client"
     patch_browser_use_site_status_allowlist_fallback "$target_client"
 
     info "Browser plugin staged from upstream DMG"
